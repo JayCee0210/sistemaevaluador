@@ -6,6 +6,11 @@ import base64
 from PIL import Image
 import pytesseract
 import io  # Importar el módulo io
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, NamedStyle
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
+# Importar las funciones de init_db.py
+from init_db import insert_docente, insert_puntuacion
 
 
 # Definiciones de tus variables y funciones
@@ -114,54 +119,130 @@ pesos = {
 
 
 
-# Función auxiliar para descargar un archivo
+
+# Función para generar el DataFrame formateado para el Excel
+def create_formatted_dataframe(session_state):
+    # Aquí debes calcular la puntuación total basada en tu lógica de aplicación
+    # Esto es solo un ejemplo basado en las puntuaciones y los criterios que mencionaste
+    total_score = sum([
+        session_state.get('educacion_superior', 0),
+        session_state.get('experiencia_profesional', 0),
+        session_state.get('grado_academico', 0),
+        session_state.get('investigaciones_publicaciones', 0),
+        session_state.get('ejercicio_docencia', 0)
+    ])
+
+    # Crear el DataFrame con las secciones que has mencionado y las puntuaciones calculadas
+    df_puntuaciones = pd.DataFrame({
+        'Sección': [
+            'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
+            'Investigaciones y Publicaciones', 'Ejercicio de la Docencia', 'Total'
+        ],
+        'Puntuación': [
+            session_state.get('educacion_superior', 0),
+            session_state.get('experiencia_profesional', 0),
+            session_state.get('grado_academico', 0),
+            session_state.get('investigaciones_publicaciones', 0),
+            session_state.get('ejercicio_docencia', 0),
+            total_score  # Puntuación total
+        ]
+    })
+    
+    # Añadir las 3 materias principales al final del DataFrame si es necesario
+    if 'top_materias' in session_state:
+        for materia in session_state['top_materias']:
+            df_puntuaciones = df_puntuaciones.append({'Sección': materia, 'Puntuación': session_state['top_materias'][materia]}, ignore_index=True)
+    
+    return df_puntuaciones
+
+# Supongamos que esta es la información recopilada de la aplicación Streamlit
+def create_detailed_dataframe():
+    # Aquí puedes agregar toda la información que necesitas en tu reporte
+    # Utiliza las variables globales o de sesión si es necesario para obtener los datos
+    detailed_data = {
+        'Nombre del Postulante': [st.session_state.get('nombre_postulante', '')],
+        'Edad': [st.session_state.get('edad_postulante', '')],
+        'Asignatura Aplicada': [st.session_state.get('asignatura_aplicada', '')],
+        'Carrera Deseada': [st.session_state.get('carrera_deseada', '')],
+        # ... Más datos según tu aplicación ...
+    }
+    return pd.DataFrame(detailed_data)
+
+# Función modificada para generar el enlace de descarga de Excel
 def get_table_download_link(df):
-    """Genera un enlace de descarga para el DataFrame de pandas"""
+    """Genera un enlace de descarga para el DataFrame de pandas, formateado como el Excel deseado."""
     towrite = BytesIO()
-    df.to_excel(towrite, index=False, header=True)  # Se escribe en un BytesIO buffer
-    towrite.seek(0)  # Se va al inicio del buffer
-    b64 = base64.b64encode(towrite.read()).decode()  # Codificación en base64
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="puntuaciones.xlsx">Descargar archivo excel</a>'
+    writer = pd.ExcelWriter(towrite, engine='openpyxl')
+    df.to_excel(writer, index=False, header=True)  # Asegúrate de incluir el encabezado si es necesario
+    
+    # Aplicar estilos personalizados
+    workbook = writer.book
+    worksheet = writer.sheets['Sheet1']
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+    header_alignment = Alignment(horizontal='center')
+    header_border = Border(bottom=Side(style='thin'))
 
-# Función para extracción de texto (ajusta según tu implementación de OCR)
-def extract_text_from_image(image_data):
-    try:
-        # Reinicia el puntero del buffer
-        image_data.seek(0)
+    for cell in worksheet["1:1"]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = header_border
 
-        # Abre la imagen con Pillow
-        image = Image.open(image_data)
+    # Formateo adicional, como ajuste de tamaños de columna
+    column_widths = {'A': 25, 'B': 10, 'C': 20, 'D': 15}
+    for column, width in column_widths.items():
+        worksheet.column_dimensions[column].width = width
 
-        # Convierte la imagen a texto usando pytesseract
-        text = pytesseract.image_to_string(image)
+    # IMPORTANTE: Aquí usamos writer.close() en lugar de writer.save()
+    writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
+    towrite.seek(0)  # Vuelve al principio del buffer para leer el contenido
+    b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
 
-        return text
-    except IOError as e:
-        # En caso de error, imprime un mensaje descriptivo
-        st.error(f"Error al procesar la imagen: {e}")
-        return ""
+    # Crear el DataFrame con la información recopilada
+    df_puntuaciones = pd.DataFrame(data)
 
-
-
-
-# Suponiendo que esta es la lógica de tu función de cálculo de puntuación
-def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia):
-    puntuacion = 0
-    # Aquí iría la lógica de cálculo de tu puntuación...
-    return puntuacion
+    # En tu aplicación de Streamlit, cuando esté listo para la descarga
+    st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 
 # Función para extracción de texto (ajusta según tu implementación de OCR)
 def extract_text_from_image(image_data):
     return pytesseract.image_to_string(Image.open(image_data))
 
-# Función auxiliar para descargar un archivo
-def get_table_download_link(df):
-    """Genera un enlace de descarga para el DataFrame de pandas"""
-    towrite = BytesIO()
-    df.to_excel(towrite, index=False, header=True)  # Se escribe en un BytesIO buffer
-    towrite.seek(0)  # Se va al inicio del buffer
-    b64 = base64.b64encode(towrite.read()).decode()  # Codificación en base64
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="puntuaciones.xlsx">Descargar archivo excel</a>'
+
+# Suponiendo que esta es la lógica de tu función de cálculo de puntuación
+def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia, 
+                                educacion_superior, experiencia_profesional, grado_academico,
+                                investigaciones_publicaciones, ejercicio_docencia, 
+                                info_adicional_puntos):
+    puntuacion = 0
+    texto_cv_min = texto_cv.lower()
+
+    # Puntuación basada en palabras clave
+    for palabra in palabras_clave.get(materia, []):
+        puntuacion += texto_cv_min.count(palabra.lower())
+
+    # Puntuación basada en grado académico, años de experiencia, diplomados y certificaciones
+    grado_puntos = pesos[materia].get(grado, 0) if materia in pesos else 0
+    años_exp_puntos = años_exp * pesos[materia].get("Años de experiencia", 0.5) if materia in pesos else 0
+    diplomados_puntos = diplomados * 0.5
+    certificaciones_puntos = certificaciones * 0.5
+
+    # Sumar puntos de los campos adicionales
+    puntuacion += educacion_superior + experiencia_profesional + grado_academico
+    puntuacion += investigaciones_publicaciones + ejercicio_docencia
+
+    # Sumar puntos de la información adicional del candidato
+    puntuacion += info_adicional_puntos
+
+    # Sumar todos los puntos
+    puntuacion += grado_puntos + años_exp_puntos + diplomados_puntos + certificaciones_puntos
+
+    return puntuacion
+
+
+
 
 # Inicialización de la sesión para almacenar el texto extraído y las puntuaciones
 if 'extracted_text' not in st.session_state:
@@ -184,38 +265,184 @@ if opcion == 'Cargar Documento':
         st.session_state['extracted_text'] = extracted_text
         st.write("Texto Extraído:")
         st.text_area("Texto", extracted_text, height=150)
+        
+
+        # Recolección y almacenamien        st.session_state['nombre_postulante'] = st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
+        st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
+        st.number_input("Edad", min_value=18, max_value=100, step=1, key='edad_postulante')
+        st.text_input("Asignatura", key='asignatura_aplicada')
+        st.text_input("Carrera", key='carrera_deseada')
+        st.session_state['años_de_experiencia'] = st.number_input('Años de Experiencia', min_value=0)
+        st.session_state['grado_académico'] = st.selectbox('Grado Académico', ['Doctorado', 'Maestría', 'Licenciatura', 'Diplomado', 'Ninguno'])
+        st.session_state['diplomados'] = st.number_input('Número de Diplomados', min_value=0)
+        st.session_state['certificaciones'] = st.number_input('Número de Certificaciones', min_value=0)
+        
+        # Sección de Evaluación del Candidato
+        st.subheader("Evaluación del Candidato")
+        educacion_superior = st.slider("Educación Superior (0-12 puntos)", 0, 12, 0)
+        experiencia_profesional = st.slider("Experiencia Profesional y Docencia (0-12 puntos)", 0, 12, 0)
+        grado_academico = st.slider("Grado Académico Alcanzado (0-24 puntos)", 0, 24, 0)
+        investigaciones_publicaciones = st.slider("Investigaciones y Publicaciones (0-15 puntos)", 0, 15, 0)
+        ejercicio_docencia = st.slider("Ejercicio de la Docencia (0-9 puntos)", 0, 9, 0)
+
+
+
+
+    if st.button('Confirmar Información'):
+        # Aquí guardas los datos en la base de datos y asignas el docente_id
+        docente_id = insert_docente(st.session_state.get('nombre_postulante', ''), 
+                                    st.session_state.get('experiencia_profesional', 0), 
+                                    st.session_state.get('grado_academico', ''),
+                                    st.session_state.get('diplomados', 0),
+                                    st.session_state.get('certificaciones', 0))
+        st.session_state['docente_id'] = docente_id
+        st.success("Información del docente guardada correctamente.")
+    
+     #Sección de Evaluación de Personalidad
+        # Categorías de personalidad y estilo de enseñanza
+categorias = {
+    "Empatía": [
+        "Capacidad para entender emociones ajenas", 
+        "Responder adecuadamente a las necesidades emocionales de los estudiantes",
+        "Mantener una actitud comprensiva ante los problemas de los estudiantes",
+        "Reconocer y apoyar la diversidad emocional y cultural en el aula",
+        "Desarrollar relaciones de confianza con los estudiantes"
+    ],
+    "Paciencia": [
+        "Manejar con calma las interrupciones en clase",
+        "Mantener la serenidad con estudiantes desafiantes",
+        "Dar tiempo a los estudiantes para entender nuevos conceptos",
+        "Permanecer paciente durante procesos de aprendizaje lentos",
+        "Gestionar las expectativas propias y de los estudiantes de manera realista"
+    ],
+    "Comunicación": [
+        "Explicar conceptos complejos de manera clara",
+        "Fomentar la participación activa en clase",
+        "Comunicarse eficazmente con padres y colegas",
+        "Utilizar diversos medios y tecnologías para mejorar la comunicación",
+        "Escuchar activamente y dar feedback constructivo"
+    ],
+    "Liderazgo": [
+        "Motivar a los estudiantes hacia objetivos comunes",
+        "Gestionar el aula de manera efectiva",
+        "Tomar iniciativas para proyectos y actividades",
+        "Fomentar un ambiente de respeto mutuo y colaboración",
+        "Ser un modelo a seguir en cuanto a ética y valores"
+    ],
+    "Creatividad": [
+        "Incorporar métodos innovadores en la enseñanza",
+        "Resolver problemas de manera creativa",
+        "Adaptarse a diferentes estilos de aprendizaje",
+        "Desarrollar y utilizar recursos creativos para el aprendizaje",
+        "Fomentar la creatividad y el pensamiento crítico en los estudiantes"
+    ],
+    "Adaptabilidad": [
+        "Ajustarse a cambios y desafíos inesperados en el aula",
+        "Manejar situaciones estresantes con flexibilidad",
+        "Adaptar las estrategias de enseñanza a las necesidades cambiantes de los estudiantes",
+        "Ser receptivo a nuevas ideas y enfoques pedagógicos",
+        "Mantener una actitud positiva frente a la incertidumbre y el cambio"
+    ],
+    "Organización": [
+        "Planificar y organizar el contenido del curso de manera eficiente",
+        "Gestionar el tiempo de clase de forma efectiva",
+        "Mantener registros y documentación ordenados y actualizados",
+        "Establecer y seguir rutinas que faciliten el aprendizaje",
+        "Priorizar tareas y responsabilidades para maximizar el rendimiento"
+    ]
+}
+
+# Generar preguntas
+for categoria, preguntas in categorias.items():
+    st.markdown(f"#### {categoria}")
+    for pregunta in preguntas:
+        st.slider(pregunta, 1, 5, 3)
+
+# Botón para enviar las respuestas
+if st.button('Evaluar Personalidad y Estilo de Enseñanza'):
+    # Aquí puedes procesar y almacenar las respuestas
+    st.success("Evaluación de personalidad completada.")
+        
+
+st.title("Evaluación de Competencias Docentes")
+
+resultados = {}
+for categoria, preguntas in categorias.items():
+    st.subheader(categoria)
+    puntaje_total = 0
+    for pregunta in preguntas:
+        puntaje = st.slider(pregunta, 1, 5, key=pregunta)
+        puntaje_total += puntaje
+    promedio = puntaje_total / len(preguntas)
+    resultados[categoria] = promedio
+if st.button('Evaluar'):
+    for categoria, promedio in resultados.items():
+        st.write(f"Categoría: {categoria}, Puntuación Promedio: {promedio:.2f}")
+
+        # Interpretación y recomendaciones
+        if promedio >= 4:
+            st.markdown(f"**Excelente en {categoria}**: Tus respuestas indican que posees habilidades excepcionales en esta área. Continúa fortaleciendo y compartiendo estas habilidades con otros.")
+        elif 2.5 <= promedio < 4:
+            st.markdown(f"**Competente en {categoria}**: Muestras habilidades adecuadas en esta área, pero hay espacio para mejorar. Considera explorar nuevas estrategias y técnicas para fortalecer esta competencia.")
+        else:
+            st.markdown(f"**Desarrollo necesario en {categoria}**: Parece que esta es un área en la que podrías mejorar. Busca oportunidades de desarrollo profesional y recursos que te ayuden a crecer en esta área.")
+
+# Nota: Este es un esquema simplificado. Puedes personalizar las respuestas y recomendaciones según las necesidades específicas del contexto educativo.
+
+
+
 elif opcion == 'Ver Resultados':
-    if st.session_state['extracted_text']:
-        extracted_text = st.session_state['extracted_text']
-        # Entradas para los datos adicionales
-        años_de_experiencia = st.number_input('Años de Experiencia', min_value=0)
-        grado_académico = st.selectbox('Grado Académico', ['Doctorado', 'Maestría', 'Licenciatura', 'Diplomado', 'Ninguno'])
-        diplomados = st.number_input('Número de Diplomados', min_value=0)
-        certificaciones = st.number_input('Número de Certificaciones', min_value=0)
+    if 'docente_id' in st.session_state:
+
+        # Incluir aquí la evaluación de competencias docentes
+        st.subheader("Evaluación de Competencias Docentes")
+
+        # Ejemplo de cómo podrían presentarse las preguntas de evaluación
+        evaluacion_competencias = {categoria: st.slider(categoria, 0, 5, 0) for categoria in categorias}
+        st.session_state['evaluacion_competencias'] = evaluacion_competencias
 
         if st.button('Evaluar Competencias'):
-            # Cálculo de puntuaciones y almacenamiento en el estado de la sesión
+            # Calcula puntos adicionales basados en la información del candidato
+            info_adicional_puntos = (st.session_state.get('educacion_superior', 0) +
+                                     st.session_state.get('experiencia_profesional', 0) +
+                                     st.session_state.get('grado_academico', 0) +
+                                     st.session_state.get('investigaciones_publicaciones', 0) +
+                                     st.session_state.get('ejercicio_docencia', 0))
+
+            # Cálculo de puntuaciones utilizando las variables
             puntuaciones = {
                 materia: calcular_puntuacion_materia(
-                    extracted_text,
-                    años_de_experiencia,
-                    grado_académico,
-                    diplomados,
-                    certificaciones,
-                    materia
+                    st.session_state['extracted_text'],
+                    st.session_state.get('años_de_experiencia', 0),
+                    st.session_state.get('grado_académico', 'Ninguno'),
+                    st.session_state.get('diplomados', 0),
+                    st.session_state.get('certificaciones', 0),
+                    materia,
+                    st.session_state.get('educacion_superior', 0),
+                    st.session_state.get('experiencia_profesional', 0),
+                    st.session_state.get('grado_academico', 0),
+                    st.session_state.get('investigaciones_publicaciones', 0),
+                    st.session_state.get('ejercicio_docencia', 0),
+                    info_adicional_puntos
                 )
                 for materia in materias
             }
             st.session_state['puntuaciones'] = puntuaciones
+            st.success("Competencias evaluadas y guardadas en la base de datos.")
 
-            # Crear DataFrame con puntuaciones para visualización y descarga
+            # Crear el DataFrame con puntuaciones para visualización y descarga
             df_puntuaciones = pd.DataFrame(list(puntuaciones.items()), columns=['Materia', 'Puntuación'])
             st.write(df_puntuaciones)
 
-            # Mostrar las puntuaciones en una tabla y en un gráfico de barras
-            st.bar_chart(df_puntuaciones.set_index('Materia'))
+            # Generar el gráfico de barras para las puntuaciones
+            fig, ax = plt.subplots()
+            ax.barh(df_puntuaciones['Materia'], df_puntuaciones['Puntuación'])
+            plt.xlabel('Puntuación')
+            plt.ylabel('Materia')
+            plt.title('Puntuación por Materia')
+            st.pyplot(fig)
 
-            # Permitir al usuario descargar las puntuaciones como archivo Excel
+            # Generar el enlace de descarga para el DataFrame df_puntuaciones
             st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 
             # Mostrar las 3 materias principales
@@ -226,16 +453,13 @@ elif opcion == 'Ver Resultados':
             # Proporcionar retroalimentación basada en las puntuaciones
             for index, row in top_materias.iterrows():
                 st.write(f"Para la materia {row['Materia']}, la puntuación obtenida es {row['Puntuación']}.")
-            
 
-            # Definición del umbral de aceptación (puedes cambiar el valor según tus necesidades)
-            umbral_de_aceptación = 5  # por ejemplo, esto podría ser el puntaje mínimo aceptable
-                        
-            # Suponiendo que 'top_materias' es un DataFrame de pandas y estás verificando el valor máximo en la columna 'Puntuación'
-            if top_materias['Puntuación'].max() < umbral_de_aceptación:
-                # Lógica para manejar situaciones donde la puntuación máxima es menor que el umbral de aceptación
-                st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
-            else:
-                # Lógica para manejar situaciones donde la puntuación máxima es igual o mayor que el umbral de aceptación
+            # Definición del umbral de aceptación
+            umbral_de_aceptacion = 3  # por ejemplo, esto podría ser el puntaje mínimo aceptable
+
+            materias_aceptadas = df_puntuaciones[df_puntuaciones['Puntuación'] >= umbral_de_aceptacion]
+            if not materias_aceptadas.empty:
                 st.write("El docente cumple con el umbral de aceptación para las siguientes materias:")
-                # Aquí podrías mostrar las materias que cumplen con el umbral, etc.
+                st.table(materias_aceptadas)
+            else:
+                st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
