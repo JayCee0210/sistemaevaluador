@@ -13,6 +13,9 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from init_db import insert_docente, insert_puntuacion
 
 
+# Crear una lista para almacenar los reportes de resultados anteriores
+reportes_anteriores = []
+
 # Definiciones de tus variables y funciones
 
 materias = [
@@ -442,8 +445,23 @@ elif opcion == 'Ver Resultados':
             plt.title('Puntuación por Materia')
             st.pyplot(fig)
 
+             # Crear un DataFrame con la información relevante para el reporte
+            df_reporte = pd.DataFrame({
+             'Nombre del Postulante': [st.session_state.get('nombre_postulante', '')],
+             'Edad': [st.session_state.get('edad_postulante', '')],
+             'Asignatura Aplicada': [st.session_state.get('asignatura_aplicada', '')],
+             'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
+            })
+
             # Generar el enlace de descarga para el DataFrame df_puntuaciones
             st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
+
+            # Añadir las puntuaciones al DataFrame del reporte
+            df_reporte = pd.concat([df_reporte, df_puntuaciones], axis=1)
+
+            # Añadir el reporte a la lista de reportes anteriores
+            reportes_anteriores.append(df_reporte)
+
 
             # Mostrar las 3 materias principales
             top_materias = df_puntuaciones.nlargest(3, 'Puntuación')
