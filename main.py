@@ -12,6 +12,13 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 # Importar las funciones de init_db.py
 from init_db import insert_docente, insert_puntuacion
 
+# Definir usuarios y contraseñas
+usuarios = {
+    "drhunivalle": "drhunivalle002",
+    "docente": "doentes2024",
+    # Añadir más usuarios según sea necesario
+}
+
 
 # Crear una lista para almacenar los reportes de resultados anteriores
 reportes_anteriores = []
@@ -212,6 +219,14 @@ if 'puntuaciones' not in st.session_state:
     st.session_state['puntuaciones'] = {}
 # Aplicación Streamlit
 st.title('Evaluador de Competencias Docentes')
+
+# Autenticación de usuario
+username = st.sidebar.text_input("Usuario")
+password = st.sidebar.text_input("Contraseña", type="password")
+
+if st.sidebar.button("Iniciar sesión"):
+    if username in usuarios and usuarios[username] == password:
+        st.success(f"Bienvenido, {username}!")
 # Opción para cambiar entre vistas
 opcion = st.sidebar.radio("¿Qué deseas hacer?", ('Cargar Documento', 'Ver Resultados'), key='opcion_vista')
 if opcion == 'Cargar Documento':
@@ -413,3 +428,6 @@ elif opcion == 'Ver Resultados':
                 st.table(materias_aceptadas)
             else:
                 st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
+
+else:
+        st.error("Usuario o contraseña incorrectos.")
