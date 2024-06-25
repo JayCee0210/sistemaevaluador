@@ -172,7 +172,7 @@ def create_detailed_dataframe():
     return pd.DataFrame(detailed_data)
 
 # Función modificada para generar el enlace de descarga de Excel
-def get_table_download_link(df):
+def get_table_download_link(df, postulant_name):
     """Genera un enlace de descarga para el DataFrame de pandas, formateado como el Excel deseado."""
     towrite = BytesIO()
     writer = pd.ExcelWriter(towrite, engine='openpyxl')
@@ -201,13 +201,17 @@ def get_table_download_link(df):
     writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
     towrite.seek(0)  # Vuelve al principio del buffer para leer el contenido
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="{nombre_archivo}">Descargar Reporte {nombre_postulante}.xlsx</a>'
+    
+    # Nombre del archivo con el nombre del postulante
+    file_name = f"Reporte_{postulant_name}.xlsx"
+
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">Descargar archivo excel</a>'
 
     # Crear el DataFrame con la información recopilada
     df_puntuaciones = pd.DataFrame(data)
 
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
-    st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
+    st.markdown(get_table_download_link(df_puntuaciones, st.session_state.get('nombre_postulante', '')), unsafe_allow_html=True)
 
 # Función para extracción de texto (ajusta según tu implementación de OCR)
 def extract_text_from_image(image_data):
@@ -481,3 +485,4 @@ elif opcion == 'Ver Resultados':
                 st.table(materias_aceptadas)
             else:
                 st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
+
