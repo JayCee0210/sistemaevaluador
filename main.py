@@ -176,7 +176,9 @@ def get_table_download_link(df):
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
     return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
     # Crear el DataFrame con la información recopilada
-    df_puntuaciones = pd.DataFrame(data)
+    # Añadir el nombre del candidato al principio del DataFrame
+    nombre_candidato = st.session_state.get('nombre_postulante', 'Sin nombre')
+    df_puntuaciones = pd.concat([pd.DataFrame({'Materia': ['Nombre del Candidato'], 'Puntuación': [nombre_candidato]}), df_puntuaciones])
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
     st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 # Función para extracción de texto (ajusta según tu implementación de OCR)
