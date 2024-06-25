@@ -116,17 +116,16 @@ def create_formatted_dataframe(session_state):
     # Crear el DataFrame con las secciones que has mencionado y las puntuaciones calculadas
     df_puntuaciones = pd.DataFrame({
         'Sección': [
-            'Nombre del Candidato', 'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
+            'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
             'Investigaciones y Publicaciones', 'Ejercicio de la Docencia', 'Total'
         ],
-       'Puntuación': [
-            session_state.get('nombre_postulante', ''),
+        'Puntuación': [
             session_state.get('educacion_superior', 0),
             session_state.get('experiencia_profesional', 0),
             session_state.get('grado_academico', 0),
             session_state.get('investigaciones_publicaciones', 0),
             session_state.get('ejercicio_docencia', 0),
-            total_score
+            total_score  # Puntuación total
         ]
     })
     
@@ -134,11 +133,6 @@ def create_formatted_dataframe(session_state):
     if 'top_materias' in session_state:
         for materia in session_state['top_materias']:
             df_puntuaciones = df_puntuaciones.append({'Sección': materia, 'Puntuación': session_state['top_materias'][materia]}, ignore_index=True)
-    
-    # Añadir el nombre del candidato al inicio del DataFrame
-    df_puntuaciones.loc[-1] = ['Nombre del Candidato', session_state.get('nombre_postulante', '')]
-    df_puntuaciones.index = df_puntuaciones.index + 1  # Mover el índice hacia abajo
-    df_puntuaciones.sort_index(inplace=True)  # Reordenar los índices
     
     return df_puntuaciones
 # Supongamos que esta es la información recopilada de la aplicación Streamlit
@@ -155,10 +149,10 @@ def create_detailed_dataframe():
     return pd.DataFrame(detailed_data)
 # Función modificada para generar el enlace de descarga de Excel
 def get_table_download_link(df):
-"""Genera un enlace de descarga para el DataFrame de pandas, formateado como el Excel deseado."""
+    """Genera un enlace de descarga para el DataFrame de pandas, formateado como el Excel deseado."""
     towrite = BytesIO()
     writer = pd.ExcelWriter(towrite, engine='openpyxl')
-    df.to_excel(writer, index=False, header=True)
+    df.to_excel(writer, index=False, header=True)  # Asegúrate de incluir el encabezado si es necesario
     
     # Aplicar estilos personalizados
     workbook = writer.book
@@ -172,12 +166,12 @@ def get_table_download_link(df):
         cell.fill = header_fill
         cell.alignment = header_alignment
         cell.border = header_border
-     # Formateo adicional, como ajuste de tamaños de columna
+    # Formateo adicional, como ajuste de tamaños de columna
     column_widths = {'A': 25, 'B': 10, 'C': 20, 'D': 15}
     for column, width in column_widths.items():
         worksheet.column_dimensions[column].width = width
     # IMPORTANTE: Aquí usamos writer.close() en lugar de writer.save()
-   writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
+    writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
     towrite.seek(0)  # Vuelve al principio del buffer para leer el contenido
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
     return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
@@ -248,6 +242,7 @@ if opcion == 'Cargar Documento':
         investigaciones_publicaciones = st.slider("Investigaciones y Publicaciones (0-15 puntos)", 0, 15, 0)
         ejercicio_docencia = st.slider("Ejercicio de la Docencia (0-9 puntos)", 0, 9, 0)
     if st.button('Confirmar Información'):
+        # Aquí guardas los datos en la base de datos y asignas el docente_id
         docente_id = insert_docente(st.session_state.get('nombre_postulante', ''), 
                                     st.session_state.get('experiencia_profesional', 0), 
                                     st.session_state.get('grado_academico', ''),
@@ -393,9 +388,8 @@ elif opcion == 'Ver Resultados':
              'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
             })
 
-           # Generar el enlace de descarga para el DataFrame df_puntuaciones
-            df = create_formatted_dataframe(st.session_state)
-            st.markdown(get_table_download_link(df), unsafe_allow_html=True)
+            # Generar el enlace de descarga para el DataFrame df_puntuaciones
+            st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 
             # Añadir las puntuaciones al DataFrame del reporte
             df_reporte = pd.concat([df_reporte, df_puntuaciones], axis=1)
