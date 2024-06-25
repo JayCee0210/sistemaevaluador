@@ -201,7 +201,7 @@ def get_table_download_link(df):
     writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
     towrite.seek(0)  # Vuelve al principio del buffer para leer el contenido
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="{nombre_archivo}">Descargar Reporte {nombre_postulante}.xlsx</a>'
 
     # Crear el DataFrame con la información recopilada
     df_puntuaciones = pd.DataFrame(data)
