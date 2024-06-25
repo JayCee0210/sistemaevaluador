@@ -104,6 +104,8 @@ pesos = {
 }
 # Función para generar el DataFrame formateado para el Excel
 def create_formatted_dataframe(session_state):
+    # Obtener el nombre del candidato de la sesión
+    nombre_candidato = session_state.get('nombre_postulante', 'Sin nombre')
     # Aquí debes calcular la puntuación total basada en tu lógica de aplicación
     # Esto es solo un ejemplo basado en las puntuaciones y los criterios que mencionaste
     total_score = sum([
@@ -116,10 +118,12 @@ def create_formatted_dataframe(session_state):
     # Crear el DataFrame con las secciones que has mencionado y las puntuaciones calculadas
     df_puntuaciones = pd.DataFrame({
         'Sección': [
+            'Nombre del Candidato',  # Añadir esta línea
             'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
             'Investigaciones y Publicaciones', 'Ejercicio de la Docencia', 'Total'
         ],
         'Puntuación': [
+            nombre_candidato,  # Añadir esta línea
             session_state.get('educacion_superior', 0),
             session_state.get('experiencia_profesional', 0),
             session_state.get('grado_academico', 0),
@@ -389,6 +393,9 @@ elif opcion == 'Ver Resultados':
              'Asignatura Aplicada': [st.session_state.get('asignatura_aplicada', '')],
              'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
             })
+
+            # Aquí es donde debes insertar la nueva línea:
+            df_puntuaciones = create_formatted_dataframe(st.session_state)
 
             # Generar el enlace de descarga para el DataFrame df_puntuaciones
             st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
