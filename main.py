@@ -13,9 +13,6 @@ from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 from init_db import insert_docente, insert_puntuacion
 
 
-# Crear una lista para almacenar los reportes de resultados anteriores
-reportes_anteriores = []
-
 # Definiciones de tus variables y funciones
 
 materias = [
@@ -172,7 +169,7 @@ def create_detailed_dataframe():
     return pd.DataFrame(detailed_data)
 
 # Función modificada para generar el enlace de descarga de Excel
-def get_table_download_link(df, postulant_name):
+def get_table_download_link(df):
     """Genera un enlace de descarga para el DataFrame de pandas, formateado como el Excel deseado."""
     towrite = BytesIO()
     writer = pd.ExcelWriter(towrite, engine='openpyxl')
@@ -201,17 +198,13 @@ def get_table_download_link(df, postulant_name):
     writer.close()  # Cierra el writer y guarda el contenido en el buffer 'towrite'
     towrite.seek(0)  # Vuelve al principio del buffer para leer el contenido
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
-    
-    # Nombre del archivo con el nombre del postulante
-    file_name = f"Reporte_{postulant_name}.xlsx"
-
-    return f'<a href="data:application/octet-stream;base64,{b64}" download="{file_name}">Descargar archivo excel</a>'
+    return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
 
     # Crear el DataFrame con la información recopilada
     df_puntuaciones = pd.DataFrame(data)
 
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
-    st.markdown(get_table_download_link(df_puntuaciones, st.session_state.get('nombre_postulante', '')), unsafe_allow_html=True)
+    st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 
 # Función para extracción de texto (ajusta según tu implementación de OCR)
 def extract_text_from_image(image_data):
@@ -449,23 +442,8 @@ elif opcion == 'Ver Resultados':
             plt.title('Puntuación por Materia')
             st.pyplot(fig)
 
-             # Crear un DataFrame con la información relevante para el reporte
-            df_reporte = pd.DataFrame({
-             'Nombre del Postulante': [st.session_state.get('nombre_postulante', '')],
-             'Edad': [st.session_state.get('edad_postulante', '')],
-             'Asignatura Aplicada': [st.session_state.get('asignatura_aplicada', '')],
-             'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
-            })
-
             # Generar el enlace de descarga para el DataFrame df_puntuaciones
             st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
-
-            # Añadir las puntuaciones al DataFrame del reporte
-            df_reporte = pd.concat([df_reporte, df_puntuaciones], axis=1)
-
-            # Añadir el reporte a la lista de reportes anteriores
-            reportes_anteriores.append(df_reporte)
-
 
             # Mostrar las 3 materias principales
             top_materias = df_puntuaciones.nlargest(3, 'Puntuación')
@@ -483,6 +461,8 @@ elif opcion == 'Ver Resultados':
             if not materias_aceptadas.empty:
                 st.write("El docente cumple con el umbral de aceptación para las siguientes materias:")
                 st.table(materias_aceptadas)
+            else:
+                st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
             else:
                 st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
 
