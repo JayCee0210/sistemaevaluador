@@ -104,8 +104,6 @@ pesos = {
 }
 # Función para generar el DataFrame formateado para el Excel
 def create_formatted_dataframe(session_state):
-    # Obtener el nombre del candidato de la sesión
-    nombre_candidato = session_state.get('nombre_postulante', 'Sin nombre')
     # Aquí debes calcular la puntuación total basada en tu lógica de aplicación
     # Esto es solo un ejemplo basado en las puntuaciones y los criterios que mencionaste
     total_score = sum([
@@ -118,12 +116,10 @@ def create_formatted_dataframe(session_state):
     # Crear el DataFrame con las secciones que has mencionado y las puntuaciones calculadas
     df_puntuaciones = pd.DataFrame({
         'Sección': [
-            'Nombre del Candidato',  # Añadir esta línea
             'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
             'Investigaciones y Publicaciones', 'Ejercicio de la Docencia', 'Total'
         ],
         'Puntuación': [
-            nombre_candidato,  # Añadir esta línea
             session_state.get('educacion_superior', 0),
             session_state.get('experiencia_profesional', 0),
             session_state.get('grado_academico', 0),
@@ -137,7 +133,10 @@ def create_formatted_dataframe(session_state):
     if 'top_materias' in session_state:
         for materia in session_state['top_materias']:
             df_puntuaciones = df_puntuaciones.append({'Sección': materia, 'Puntuación': session_state['top_materias'][materia]}, ignore_index=True)
-    
+    # Añadir el nombre del candidato al inicio del DataFrame
+    df_puntuaciones.loc[-1] = ['Nombre del Candidato', session_state.get('nombre_postulante', '')]
+    df_puntuaciones.index = df_puntuaciones.index + 1  # Mover el índice hacia abajo
+    df_puntuaciones.sort_index(inplace=True)  # Reordenar los índices
     return df_puntuaciones
 # Supongamos que esta es la información recopilada de la aplicación Streamlit
 def create_detailed_dataframe():
@@ -180,17 +179,14 @@ def get_table_download_link(df):
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
     return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
     # Crear el DataFrame con la información recopilada
-    # Añadir el nombre del candidato al principio del DataFrame
-    nombre_candidato = st.session_state.get('nombre_postulante', 'Sin nombre')
-    nueva_fila = pd.DataFrame({'Materia': ['Nombre del Candidato'], 'Puntuación': [nombre_candidato]})
-    df_puntuaciones = pd.concat([nueva_fila, df_puntuaciones]).reset_index(drop=True)
+    df_puntuaciones = pd.DataFrame(data)
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
     st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
-    # Función para extracción de texto (ajusta según tu implementación de OCR)
-    def extract_text_from_image(image_data):
+# Función para extracción de texto (ajusta según tu implementación de OCR)
+def extract_text_from_image(image_data):
     return pytesseract.image_to_string(Image.open(image_data))
-    # Suponiendo que esta es la lógica de tu función de cálculo de puntuación
-    def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia, 
+# Suponiendo que esta es la lógica de tu función de cálculo de puntuación
+def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia, 
                                 educacion_superior, experiencia_profesional, grado_academico,
                                 investigaciones_publicaciones, ejercicio_docencia, 
                                 info_adicional_puntos):
@@ -233,7 +229,6 @@ if opcion == 'Cargar Documento':
         
         # Recolección y almacenamien        st.session_state['nombre_postulante'] = st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
         st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
-        st.write(f"Nombre guardado: {st.session_state.get('nombre_postulante', 'No guardado')}")
         st.number_input("Edad", min_value=18, max_value=100, step=1, key='edad_postulante')
         st.text_input("Asignatura", key='asignatura_aplicada')
         st.text_input("Carrera", key='carrera_deseada')
@@ -395,9 +390,6 @@ elif opcion == 'Ver Resultados':
              'Asignatura Aplicada': [st.session_state.get('asignatura_aplicada', '')],
              'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
             })
-
-            # Aquí es donde debes insertar la nueva línea:
-            df_puntuaciones = create_formatted_dataframe(st.session_state)
 
             # Generar el enlace de descarga para el DataFrame df_puntuaciones
             st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
