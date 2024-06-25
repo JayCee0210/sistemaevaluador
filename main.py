@@ -182,14 +182,15 @@ def get_table_download_link(df):
     # Crear el DataFrame con la información recopilada
     # Añadir el nombre del candidato al principio del DataFrame
     nombre_candidato = st.session_state.get('nombre_postulante', 'Sin nombre')
-    df_puntuaciones = pd.concat([pd.DataFrame({'Materia': ['Nombre del Candidato'], 'Puntuación': [nombre_candidato]}), df_puntuaciones])
+    nueva_fila = pd.DataFrame({'Materia': ['Nombre del Candidato'], 'Puntuación': [nombre_candidato]})
+    df_puntuaciones = pd.concat([nueva_fila, df_puntuaciones]).reset_index(drop=True)
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
     st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
-# Función para extracción de texto (ajusta según tu implementación de OCR)
-def extract_text_from_image(image_data):
+    # Función para extracción de texto (ajusta según tu implementación de OCR)
+    def extract_text_from_image(image_data):
     return pytesseract.image_to_string(Image.open(image_data))
-# Suponiendo que esta es la lógica de tu función de cálculo de puntuación
-def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia, 
+    # Suponiendo que esta es la lógica de tu función de cálculo de puntuación
+    def calcular_puntuacion_materia(texto_cv, años_exp, grado, diplomados, certificaciones, materia, 
                                 educacion_superior, experiencia_profesional, grado_academico,
                                 investigaciones_publicaciones, ejercicio_docencia, 
                                 info_adicional_puntos):
@@ -232,6 +233,7 @@ if opcion == 'Cargar Documento':
         
         # Recolección y almacenamien        st.session_state['nombre_postulante'] = st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
         st.text_input("Nombre y Apellidos del Postulante", key='nombre_postulante')
+        st.write(f"Nombre guardado: {st.session_state.get('nombre_postulante', 'No guardado')}")
         st.number_input("Edad", min_value=18, max_value=100, step=1, key='edad_postulante')
         st.text_input("Asignatura", key='asignatura_aplicada')
         st.text_input("Carrera", key='carrera_deseada')
