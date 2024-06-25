@@ -255,9 +255,6 @@ if opcion == 'Cargar Documento':
                                     st.session_state.get('certificaciones', 0))
         st.session_state['docente_id'] = docente_id
         st.success("Información del docente guardada correctamente.")
-        # Generar DataFrame y proporcionar enlace de descarga
-        df = create_formatted_dataframe(st.session_state)
-        st.markdown(get_table_download_link(df), unsafe_allow_html=True)
     
      #Sección de Evaluación de Personalidad
         # Categorías de personalidad y estilo de enseñanza
@@ -396,8 +393,9 @@ elif opcion == 'Ver Resultados':
              'Carrera Deseada': [st.session_state.get('carrera_deseada', '')]
             })
 
-            # Generar el enlace de descarga para el DataFrame df_puntuaciones
-            st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
+           # Generar el enlace de descarga para el DataFrame df_puntuaciones
+            df = create_formatted_dataframe(st.session_state)
+            st.markdown(get_table_download_link(df), unsafe_allow_html=True)
 
             # Añadir las puntuaciones al DataFrame del reporte
             df_reporte = pd.concat([df_reporte, df_puntuaciones], axis=1)
