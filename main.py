@@ -104,6 +104,8 @@ pesos = {
 }
 # Función para generar el DataFrame formateado para el Excel
 def create_formatted_dataframe(session_state):
+    # Obtener el nombre del candidato de la sesión
+    nombre_candidato = session_state.get('nombre_postulante', 'Sin nombre')
     # Aquí debes calcular la puntuación total basada en tu lógica de aplicación
     # Esto es solo un ejemplo basado en las puntuaciones y los criterios que mencionaste
     total_score = sum([
@@ -116,16 +118,18 @@ def create_formatted_dataframe(session_state):
     # Crear el DataFrame con las secciones que has mencionado y las puntuaciones calculadas
     df_puntuaciones = pd.DataFrame({
         'Sección': [
+            'Nombre del Candidato',  # Añadir esta línea
             'Educación Superior', 'Experiencia Profesional', 'Grado Académico', 
             'Investigaciones y Publicaciones', 'Ejercicio de la Docencia', 'Total'
         ],
         'Puntuación': [
+            nombre_candidato,  # Añadir esta línea
             session_state.get('educacion_superior', 0),
             session_state.get('experiencia_profesional', 0),
             session_state.get('grado_academico', 0),
             session_state.get('investigaciones_publicaciones', 0),
             session_state.get('ejercicio_docencia', 0),
-            total_score  # Puntuación total
+            total_score
         ]
     })
     
@@ -176,7 +180,7 @@ def get_table_download_link(df):
     b64 = base64.b64encode(towrite.read()).decode()  # Codifica el contenido del buffer para la descarga
     return f'<a href="data:application/octet-stream;base64,{b64}" download="evaluacion_docente.xlsx">Descargar archivo excel</a>'
     # Crear el DataFrame con la información recopilada
-    df_puntuaciones = pd.DataFrame(data)
+    df_puntuaciones = create_formatted_dataframe(st.session_state)
     # En tu aplicación de Streamlit, cuando esté listo para la descarga
     st.markdown(get_table_download_link(df_puntuaciones), unsafe_allow_html=True)
 # Función para extracción de texto (ajusta según tu implementación de OCR)
@@ -410,6 +414,9 @@ elif opcion == 'Ver Resultados':
             materias_aceptadas = df_puntuaciones[df_puntuaciones['Puntuación'] >= umbral_de_aceptacion]
             if not materias_aceptadas.empty:
                 st.write("El docente cumple con el umbral de aceptación para las siguientes materias:")
+                st.table(materias_aceptadas)
+            else:
+                st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
                 st.table(materias_aceptadas)
             else:
                 st.write("El docente no cumple con el umbral de aceptación para ninguna materia.")
