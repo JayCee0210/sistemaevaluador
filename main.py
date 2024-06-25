@@ -133,10 +133,7 @@ def create_formatted_dataframe(session_state):
     if 'top_materias' in session_state:
         for materia in session_state['top_materias']:
             df_puntuaciones = df_puntuaciones.append({'Sección': materia, 'Puntuación': session_state['top_materias'][materia]}, ignore_index=True)
-    # Añadir el nombre del candidato al inicio del DataFrame
-    df_puntuaciones.loc[-1] = ['Nombre del Candidato', session_state.get('nombre_postulante', '')]
-    df_puntuaciones.index = df_puntuaciones.index + 1  # Mover el índice hacia abajo
-    df_puntuaciones.sort_index(inplace=True)  # Reordenar los índices
+    
     return df_puntuaciones
 # Supongamos que esta es la información recopilada de la aplicación Streamlit
 def create_detailed_dataframe():
