@@ -11,6 +11,42 @@ from openpyxl.styles import Alignment, Font, NamedStyle
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font
 # Importar las funciones de init_db.py
 from init_db import insert_docente, insert_puntuacion
+# --- INICIO LOGIN USANDO DB ---
+from init_db import verify_user, init_db as init_db_from_module
+
+# Inicializar DB (tablas y usuarios por defecto)
+init_db_from_module()
+
+def login_component_db():
+    if 'logged_in' not in st.session_state:
+        st.session_state['logged_in'] = False
+        st.session_state['username'] = ''
+
+    if st.session_state.get('logged_in'):
+        st.sidebar.write(f"✅ Conectado como: **{st.session_state['username']}**")
+        if st.sidebar.button("Cerrar sesión"):
+            st.session_state['logged_in'] = False
+            st.session_state['username'] = ''
+            st.experimental_rerun()
+        return True
+
+    st.sidebar.markdown("## Login")
+    username = st.sidebar.text_input("Usuario")
+    password = st.sidebar.text_input("Contraseña", type="password")
+    if st.sidebar.button("Iniciar sesión"):
+        if verify_user(username, password):
+            st.session_state['logged_in'] = True
+            st.session_state['username'] = username
+            st.success("Inicio correcto.")
+            st.experimental_rerun()
+        else:
+            st.error("Usuario o contraseña incorrectos.")
+    return False
+
+# Ejecutar login: si no está logueado, detenemos la app
+if not login_component_db():
+    st.stop()
+# --- FIN LOGIN USANDO DB ---
 
 
 # Crear una lista para almacenar los reportes de resultados anteriores
